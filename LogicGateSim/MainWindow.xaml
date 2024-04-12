@@ -1,0 +1,26 @@
+﻿<Window x:Class="LogicGateSim.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:LogicGateSim"
+        mc:Ignorable="d"
+        Title="LogicGateSim
+        " Height="450" Width="800">
+    <StackPanel>
+        <Menu Background="#222">
+            <Button Width= "50" Click="Button_Click">And</Button>
+            <Button Width= "50">Or</Button>
+            <Button Width= "50">Not</Button>
+        </Menu>
+        <Canvas Name="placementMat" 
+                Drop="placementMat_Drop"
+                DragOver="placementMat_DragOver"
+                AllowDrop="True"
+                Background="#444"
+                Width="600"
+                Height="400">
+        </Canvas>
+
+    </StackPanel>
+</Window>
