@@ -2,7 +2,7 @@
 using System.Drawing;
 using System.Runtime.InteropServices;
 
-class ProgramEntry
+class Program
 {
     public static bool GLOBAL_RUNNING = true;
     const string WINDOW_CLASS = "LogicGateSimWindowClass";
@@ -53,24 +53,10 @@ class ProgramEntry
         {
             g.Clear(SystemColors.Window);
 
-            Color rectColor = Color.Black;
-            Color circleColor = Color.Red;
-            int rectX = 100;
-            int rectY = 100;
-            int rectWidth = 200;
-            int rectHeight = 100;
-            int circleRadius = 20;
-            using (Brush rectBrush = new SolidBrush(rectColor))
-            using (Brush circleBrush = new SolidBrush(circleColor))
-            {
-                g.FillRectangle(rectBrush, rectX, rectY, rectWidth, rectHeight);
-                int inputCircleX = rectX - circleRadius;
-                int inputCircleY = rectY + (rectHeight - circleRadius) / 2;
-                int outputCircleX = rectX + rectWidth;
-                int outputCircleY = rectY + (rectHeight - circleRadius) / 2;
-                g.FillEllipse(circleBrush, inputCircleX, inputCircleY, circleRadius * 2, circleRadius * 2);
-                g.FillEllipse(circleBrush, outputCircleX, outputCircleY, circleRadius * 2, circleRadius * 2);
-            }
+            Rectangle gateBounds = new Rectangle(100, 100, 200, 100);
+            AndGate andGate = new AndGate(2, 1);
+
+            andGate.Paint(g, gateBounds);
         }
         EndPaint(hWnd, ref PS);
     }
@@ -160,7 +146,7 @@ class ProgramEntry
             cbSize = (uint)Marshal.SizeOf(typeof(WNDCLASSEX)),
             style = 0,
             lpfnWndProc = Marshal.GetFunctionPointerForDelegate<WndProcDelegate>(WndProc),
-            hInstance = Marshal.GetHINSTANCE(typeof(ProgramEntry).Module),
+            hInstance = Marshal.GetHINSTANCE(typeof(Program).Module),
             lpszClassName = WINDOW_CLASS
         };
 
