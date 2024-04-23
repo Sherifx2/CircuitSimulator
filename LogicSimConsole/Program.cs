@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using static Program;
 
 class Program
 {
     public static bool GLOBAL_RUNNING = true;
     const string WINDOW_CLASS = "LogicGateSimWindowClass";
+
+    static List<Gate> gates = new List<Gate>();
 
     // DLL Hell
     [DllImport("user32.dll")]
@@ -44,22 +47,8 @@ class Program
 
     [DllImport("user32.dll")]
     static extern bool EndPaint(IntPtr hWnd, ref PAINTSTRUCT lpPaint);
-    static void PaintWindow(IntPtr hWnd)
-    {
-        PAINTSTRUCT PS;
-        IntPtr HDC = BeginPaint(hWnd, out PS);
-
-        using (Graphics g = Graphics.FromHdc(HDC))
-        {
-            g.Clear(SystemColors.Window);
-
-            Rectangle gateBounds = new Rectangle(100, 100, 200, 100);
-            AndGate andGate = new AndGate(2, 1);
-
-            andGate.Paint(g, gateBounds);
-        }
-        EndPaint(hWnd, ref PS);
-    }
+    [DllImport("user32.dll")]
+    static extern bool PeekMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
 
     // Struct Hell
     public struct POINT
@@ -120,8 +109,31 @@ class Program
     const uint WS_OVERLAPPED = 0x00CF0000;
     const uint WS_VISIBLE = 0x10000000;
 
+    const uint PM_REMOVE = 0x0001;
     const int WM_CLOSE = 0x0010;
     const int WM_PAINT = 0x000F;
+    const int WM_KEYFIRST = 0x0100;
+    const int WM_MOUSEFIRST = 0x0200;
+    const int WM_CHAR = 0x0102;
+
+    const int VK_ESCAPE = 0x1B;
+
+    static void PaintWindow(IntPtr hWnd)
+    {
+        PAINTSTRUCT PS;
+        IntPtr HDC = BeginPaint(hWnd, out PS);
+
+        using (Graphics g = Graphics.FromHdc(HDC))
+        {
+            g.Clear(SystemColors.Window);
+            foreach (Gate gate in gates)
+            {
+                Rectangle gateBounds = new Rectangle(gate.XPosition, gate.YPosition, gate.BodyWidth, gate.BodyWidth);
+                gate.Paint(g, gateBounds);
+            }
+        }
+        EndPaint(hWnd, ref PS);
+    }
 
     static IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
@@ -138,9 +150,30 @@ class Program
         }
         return 0;
     }
-
+    static void ProcessPendingMessages(MSG msg)
+    {
+        while (PeekMessage(out msg, 0, 0, 0, PM_REMOVE))
+        {
+            if (msg.message == WM_CHAR)
+            {
+                if (msg.wParam == VK_ESCAPE)
+                {
+                    GLOBAL_RUNNING = false;
+                }
+            }
+            TranslateMessage(ref msg);
+            DispatchMessage(ref msg);
+        }
+    }
     static void Main(string[] args)
     {
+        //**-----------------------------------------------------
+        // ADD GATES HERE
+        //**-----------------------------------------------------
+        AndGate andGate = new AndGate(2, 1);
+        gates.Add(andGate);
+        //**-----------------------------------------------------
+
         WNDCLASSEX wcex = new WNDCLASSEX
         {
             cbSize = (uint)Marshal.SizeOf(typeof(WNDCLASSEX)),
@@ -152,7 +185,7 @@ class Program
 
         ushort classAtom = RegisterClassEx(ref wcex);
 
-        if(classAtom == 0)
+        if (classAtom == 0)
         {
             throw new SystemException("Failed to register the window class");
         }
@@ -183,6 +216,8 @@ class Program
             GetMessage(out msg, 0, 0, 0);
             TranslateMessage(ref msg);
             DispatchMessage(ref msg);
+            ProcessPendingMessages(msg);
+
         }
     }
     delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
