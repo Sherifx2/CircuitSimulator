@@ -49,6 +49,8 @@ class Program
     static extern bool EndPaint(IntPtr hWnd, ref PAINTSTRUCT lpPaint);
     [DllImport("user32.dll")]
     static extern bool PeekMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
+    [DllImport("user32.dll")]
+    static extern bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, bool bErase);
 
     // Struct Hell
     public struct POINT
@@ -112,9 +114,11 @@ class Program
     const uint PM_REMOVE = 0x0001;
     const int WM_CLOSE = 0x0010;
     const int WM_PAINT = 0x000F;
-    const int WM_KEYFIRST = 0x0100;
-    const int WM_MOUSEFIRST = 0x0200;
     const int WM_CHAR = 0x0102;
+
+    const int WM_LBUTTONUP = 0x202;
+    const int WM_LBUTTONDOWN = 0x201;
+    const int WM_MOUSEMOVE = 0x200;
 
     const int VK_ESCAPE = 0x1B;
 
@@ -134,7 +138,6 @@ class Program
         }
         EndPaint(hWnd, ref PS);
     }
-
     static IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
         switch (msg)
@@ -144,6 +147,15 @@ class Program
                 break;
             case WM_PAINT:
                 PaintWindow(hWnd);
+                break;
+            case WM_LBUTTONUP:
+                HandleButtonUp();
+                break;
+            case WM_LBUTTONDOWN:
+                HandleLButtonDown(lParam);
+                break;
+            case WM_MOUSEMOVE:
+                HandleMouseMove(lParam, hWnd);
                 break;
             default:
                 return DefWindowProc(hWnd, msg, wParam, lParam);
@@ -165,13 +177,49 @@ class Program
             DispatchMessage(ref msg);
         }
     }
+    static bool dragging = false;
+    static Gate currentGate;
+    static Point lastMousePos;
+
+    static void HandleButtonUp()
+    {
+        dragging = false;
+        currentGate = null;
+    }
+    static void HandleLButtonDown(IntPtr lParam)
+    {
+        Point mousePos = new Point(lParam.ToInt32() & 0xFFFF, (lParam.ToInt32() >> 16) & 0xFFFF);
+
+        foreach (Gate gate in gates)
+        {
+            Rectangle gateBounds = new Rectangle(gate.XPosition, gate.YPosition, gate.BodyWidth, gate.BodyHeight);
+            if (gateBounds.Contains(mousePos))
+            {
+                dragging = true;
+                currentGate = gate;
+                lastMousePos = mousePos;
+                break;
+            }
+        }
+    }
+    static void HandleMouseMove(IntPtr lParam, IntPtr hWnd)
+    {
+        if (dragging && currentGate != null)
+        {
+            Point currentMousePos = new Point(lParam.ToInt32() & 0xFFFF, (lParam.ToInt32() >> 16) & 0xFFFF);
+            Point offset = new Point(currentMousePos.X - lastMousePos.X, currentMousePos.Y - lastMousePos.Y);
+            currentGate.XPosition += offset.X;
+            currentGate.YPosition += offset.Y;
+            lastMousePos = currentMousePos;
+            InvalidateRect(hWnd, IntPtr.Zero, true);
+        }
+    }
     static void Main(string[] args)
     {
         //**-----------------------------------------------------
         // ADD GATES HERE
         //**-----------------------------------------------------
-        AndGate andGate = new AndGate(2, 1);
-        gates.Add(andGate);
+            gates.Add(new AndGate(2, 1));
         //**-----------------------------------------------------
 
         WNDCLASSEX wcex = new WNDCLASSEX
