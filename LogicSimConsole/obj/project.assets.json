@@ -52,6 +52,15 @@
             "rid": "win"
           }
         }
+      },
+      "System.Windows.Forms/4.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/System.Windows.Forms.dll": {}
+        },
+        "runtime": {
+          "lib/System.Windows.Forms.dll": {}
+        }
       }
     }
   },
@@ -145,11 +154,24 @@
         "system.drawing.common.nuspec",
         "useSharedDesignerContext.txt"
       ]
+    },
+    "System.Windows.Forms/4.0.0": {
+      "sha512": "WL3QPG1q88aIWO0JPOlkCeyNE+FK4ufSKY5j6J6qAFQyfCFiiOYxi8RAhev9H0CS/wmKbIK8qr8xZBod85oWKw==",
+      "type": "package",
+      "path": "system.windows.forms/4.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/System.Windows.Forms.dll",
+        "system.windows.forms.4.0.0.nupkg.sha512",
+        "system.windows.forms.nuspec"
+      ]
     }
   },
   "projectFileDependencyGroups": {
     "net8.0": [
-      "System.Drawing.Common >= 6.0.0-preview.7"
+      "System.Drawing.Common >= 6.0.0-preview.7",
+      "System.Windows.Forms >= 4.0.0"
     ]
   },
   "packageFolders": {
@@ -200,6 +222,10 @@
           "System.Drawing.Common": {
             "target": "Package",
             "version": "[6.0.0-preview.7, )"
+          },
+          "System.Windows.Forms": {
+            "target": "Package",
+            "version": "[4.0.0, )"
           }
         },
         "imports": [
@@ -229,6 +255,16 @@
       "warningLevel": 1,
       "message": "LogicSimConsole depends on System.Drawing.Common (>= 6.0.0-preview.7) but System.Drawing.Common 6.0.0-preview.7 was not found. An approximate best match of System.Drawing.Common 6.0.0-preview.7.21377.19 was resolved.",
       "libraryId": "System.Drawing.Common",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    },
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'System.Windows.Forms 4.0.0' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0'. This package may not be fully compatible with your project.",
+      "libraryId": "System.Windows.Forms",
       "targetGraphs": [
         "net8.0"
       ]

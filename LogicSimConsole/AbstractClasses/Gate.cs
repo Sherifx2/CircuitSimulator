@@ -2,13 +2,14 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
 
 public abstract class Gate
 {
-    private int xPosition;
-    private int yPosition;
+    private string gateName;
+    private Point position;
     private int numOfInputs;
     private int numOfOutputs;
     private int bodyWidth;
@@ -16,7 +17,21 @@ public abstract class Gate
 
     protected List<bool> inputs;
     protected List<bool> outputs;
-    
+
+    protected List<Pin> pins = new List<Pin>();
+
+    public string GateName
+    {
+        get => gateName;
+        set
+        {
+            gateName = value;
+        }
+    }
+    public List<Pin> Pins
+    {
+        get => pins;
+    }
     public int BodyWidth
     {
         get => bodyWidth;
@@ -34,29 +49,15 @@ public abstract class Gate
         }
     }
 
-    public int XPosition
+    public Point Position
     {
-        get => xPosition;
+        get => position;
         set
         {
-            if (value.GetType() == typeof(int))
+            if (value.GetType() == typeof(Point))
             {
-                xPosition = value;
-            }
-            else
-            {
-                throw new ArgumentException();
-            }
-        }
-    }
-    public int YPosition
-    {
-        get => yPosition;
-        set
-        {
-            if (value.GetType() == typeof(int))
-            {
-                yPosition = value;
+                position = value;
+                UpdatePinPositions();
             }
             else
             {
@@ -72,7 +73,6 @@ public abstract class Gate
             if (value > 0)
             {
                 numOfInputs = value;
-                InitializeInputs();
                 SetLength();
             }
         }
@@ -85,7 +85,6 @@ public abstract class Gate
             if (value > 0)
             {
                 numOfOutputs = value;
-                InitializeOutputs();
                 SetLength();
             }
         }
@@ -94,41 +93,65 @@ public abstract class Gate
     {
         NumOfInputs = numOfInputs;
         NumOfOutputs = numOfOutputs;
+        InitializePins();
     }
-    private void InitializeInputs()
-    {
-        inputs = new List<bool>(numOfInputs);
-        for (int i = 0; i < numOfInputs; i++)
-        {
-            inputs.Add(false);
-        }
-    }
-    private void InitializeOutputs()
-    {
-        outputs = new List<bool>(numOfOutputs);
-        for (int i = 0; i < numOfOutputs; i++)
-        {
-            outputs.Add(false);
-        }
-    }
+
     private void SetLength()
     {
         bodyWidth = 192;
         bodyHeight = Math.Max(numOfInputs, numOfOutputs) * 48;
     }
-    public void Paint(Graphics g, Rectangle bounds)
+    private void UpdatePinPositions()
     {
-        g.FillRectangle(Brushes.Black, XPosition, YPosition, BodyWidth, BodyHeight);
-
-        int circleRadius = 12;
-
+        if (pins.Count != NumOfInputs + NumOfOutputs)
+        {
+            throw new InvalidOperationException($"Pins list size does not match expected number of pins. List size = {pins.Count} Num of Inputs {NumOfInputs + NumOfInputs}");
+        }
         for (int i = 0; i < NumOfInputs; i++)
         {
-            g.FillEllipse(Brushes.Red, XPosition - circleRadius, YPosition + (BodyHeight / (NumOfInputs + 1)) * (i + 1) - circleRadius, 2 * circleRadius, 2 * circleRadius);
+            Point inputPosition = new Point(Position.X - Pin.PinRadius, Position.Y + (BodyHeight / (NumOfInputs + 1)) * (i + 1) - Pin.PinRadius);
+            pins[i].Position = inputPosition;
         }
         for (int i = 0; i < NumOfOutputs; i++)
         {
-            g.FillEllipse(Brushes.Red, XPosition + BodyWidth - circleRadius, YPosition + (BodyHeight / (NumOfOutputs + 1)) * (i + 1) - circleRadius, 2 * circleRadius, 2 * circleRadius);
+            Point outputPosition = new Point(Position.X + BodyWidth - Pin.PinRadius, Position.Y + (BodyHeight / (NumOfOutputs + 1)) * (i + 1) - Pin.PinRadius);
+            pins[NumOfInputs + i].Position = outputPosition;
         }
     }
+    public virtual void Paint(Graphics g, Rectangle bounds)
+    {
+        g.FillRectangle(Brushes.Black, Position.X, Position.Y, BodyWidth, BodyHeight);
+        Font font = new Font("Arial", 10, FontStyle.Bold);
+        Brush brush = Brushes.White;
+        float labelX = Position.X + (BodyWidth / 2) - (g.MeasureString(GateName, font).Width / 2);
+        float labelY = Position.Y + (BodyHeight / 2) - (g.MeasureString(GateName, font).Height / 2);
+        g.DrawString(GateName.ToUpper(), font, brush, labelX, labelY);
+        Color borderColor = Color.DarkGray;
+        int borderWidth = 3;
+        foreach (Pin pin in pins)
+        {
+            Brush pinBrush = pin.Power ? Brushes.Red : Brushes.Black;
+            using (Pen borderPen = new Pen(borderColor, borderWidth))
+            {
+                g.DrawEllipse(borderPen, pin.Position.X, pin.Position.Y, 2 * Pin.PinRadius, 2 * Pin.PinRadius);
+            }
+            g.FillEllipse(pinBrush, pin.Position.X, pin.Position.Y, 2 * Pin.PinRadius, 2 * Pin.PinRadius);
+            CalculateOutputs();
+        }
+    }
+    private void InitializePins()
+    {
+        pins.Clear();
+        for (int i = 0; i < NumOfInputs; i++)
+        {
+            Point inputPosition = new Point(Position.X - Pin.PinRadius, Position.Y + (BodyHeight / (NumOfInputs + 1)) * (i + 1) - Pin.PinRadius);
+            pins.Add(new Pin(inputPosition, false, this));
+        }
+        for (int i = 0; i < NumOfOutputs; i++)
+        {
+            Point outputPosition = new Point(Position.X + BodyWidth - Pin.PinRadius, Position.Y + (BodyHeight / (NumOfOutputs + 1)) * (i + 1) - Pin.PinRadius);
+            pins.Add(new Pin(outputPosition, false, this));
+        }
+    }
+    public abstract void CalculateOutputs();
 }

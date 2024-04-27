@@ -6,20 +6,25 @@ using System.Text;
 using System.Threading.Tasks;
 using static Program;
 
-public class AndGate : Gate
+public class NotGate : Gate
 {
-    public AndGate(int numOfInputs, int numOfOutputs) : base(numOfInputs, 1)
+    public NotGate(int numOfInputs, int numOfOutputs) : base(1, 1)
     {
         inputs = new List<bool>(new bool[numOfInputs]);
         outputs = new List<bool>(new bool[numOfOutputs]);
-        GateName = "And";
+        GateName = "Not";
     }
     public override void CalculateOutputs()
     {
-        for(int i = 0; i < NumOfInputs; i++) {
-            inputs[i]=(pins[i].Power);
+        for (int i = 0; i < NumOfInputs; i++)
+        {
+            inputs[i] = (pins[i].Power);
         }
-        outputs[0] = inputs.All(input => input == true);
-        pins[pins.Count-1].Power = outputs[0];
+
+        outputs[0] = !pins[0].Power;
+        pins[pins.Count - 1].Power = outputs[0];
     }
 }
+
+
+

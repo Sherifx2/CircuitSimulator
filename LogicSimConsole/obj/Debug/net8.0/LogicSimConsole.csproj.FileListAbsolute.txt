@@ -20,3 +20,4 @@ C:\Users\Sheri\OneDrive\Desktop\c#\LogicSimConsole\LogicSimConsole\bin\Debug\net
 C:\Users\Sheri\OneDrive\Desktop\c#\LogicSimConsole\LogicSimConsole\bin\Debug\net8.0\runtimes\win\lib\net6.0\System.Drawing.Common.dll
 C:\Users\Sheri\OneDrive\Desktop\c#\LogicSimConsole\LogicSimConsole\obj\Debug\net8.0\LogicSimConsole.csproj.CopyComplete
 C:\Users\Sheri\OneDrive\Desktop\c#\LogicSimConsole\LogicSimConsole\obj\Debug\net8.0\LogicSimConsole.sourcelink.json
+C:\Users\Sheri\OneDrive\Desktop\c#\LogicSimConsole\LogicSimConsole\bin\Debug\net8.0\System.Windows.Forms.dll

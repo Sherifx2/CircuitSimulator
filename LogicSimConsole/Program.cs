@@ -1,14 +1,24 @@
-﻿using System;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Runtime.InteropServices;
-using static Program;
 
 class Program
 {
-    public static bool GLOBAL_RUNNING = true;
+    static bool GLOBAL_RUNNING = true;
     const string WINDOW_CLASS = "LogicGateSimWindowClass";
 
+    private static Bitmap offScreenBuffer;
+    private static Graphics bufferGraphics;
+
     static List<Gate> gates = new List<Gate>();
+    static List<Wire> wires = new List<Wire>();
+
+
+    public static readonly int gridSize = 24;
+    static Dictionary<Point, object> gridMap = new Dictionary<Point, object>();
+
+    static Sidebar sidebar;
+
+    static string currentDraggedGate = null;
 
     // DLL Hell
     [DllImport("user32.dll")]
@@ -51,7 +61,8 @@ class Program
     static extern bool PeekMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
     [DllImport("user32.dll")]
     static extern bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, bool bErase);
-
+    [DllImport("user32.dll")]
+    static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
     // Struct Hell
     public struct POINT
     {
@@ -115,6 +126,7 @@ class Program
     const int WM_CLOSE = 0x0010;
     const int WM_PAINT = 0x000F;
     const int WM_CHAR = 0x0102;
+    const int WM_SIZE = 0x0005;
 
     const int WM_LBUTTONUP = 0x202;
     const int WM_LBUTTONDOWN = 0x201;
@@ -126,22 +138,52 @@ class Program
     {
         PAINTSTRUCT PS;
         IntPtr HDC = BeginPaint(hWnd, out PS);
+        RECT rect = PS.rcPaint;
 
+        if (offScreenBuffer == null || offScreenBuffer.Width != rect.right || offScreenBuffer.Height != rect.bottom)
+        {
+            CreateBuffer(rect.right, rect.bottom);
+        }
+
+        bufferGraphics.Clear(SystemColors.Window);
+
+
+        DrawGrid(bufferGraphics, rect.right, rect.bottom);
+        foreach (Wire wire in wires)
+        {
+            wire.Draw(bufferGraphics);
+        }
+        foreach (Gate gate in gates)
+        {
+            Rectangle gateBounds = new Rectangle(gate.Position.X, gate.Position.Y, gate.BodyWidth, gate.BodyHeight);
+            gate.Paint(bufferGraphics, gateBounds);
+        }
+        sidebar.Draw(bufferGraphics);
         using (Graphics g = Graphics.FromHdc(HDC))
         {
-            g.Clear(SystemColors.Window);
-            foreach (Gate gate in gates)
-            {
-                Rectangle gateBounds = new Rectangle(gate.XPosition, gate.YPosition, gate.BodyWidth, gate.BodyWidth);
-                gate.Paint(g, gateBounds);
-            }
+            g.DrawImage(offScreenBuffer, 0, 0);
         }
         EndPaint(hWnd, ref PS);
+    }
+    static void DrawGrid(Graphics graphics, int width, int height)
+    {
+        Pen gridPen = new Pen(Color.LightGray);
+        for (int x = 0; x < width; x += gridSize)
+        {
+            graphics.DrawLine(gridPen, x, 0, x, height);
+        }
+        for (int y = 0; y < height; y += gridSize)
+        {
+            graphics.DrawLine(gridPen, 0, y, width, y);
+        }
     }
     static IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
         switch (msg)
         {
+            case WM_SIZE:
+                HandleWindowResize(hWnd);
+                break;
             case WM_CLOSE:
                 GLOBAL_RUNNING = false;
                 break;
@@ -149,10 +191,10 @@ class Program
                 PaintWindow(hWnd);
                 break;
             case WM_LBUTTONUP:
-                HandleButtonUp();
+                HandleButtonUp(hWnd, lParam);
                 break;
             case WM_LBUTTONDOWN:
-                HandleLButtonDown(lParam);
+                HandleButtonDown(lParam, hWnd);
                 break;
             case WM_MOUSEMOVE:
                 HandleMouseMove(lParam, hWnd);
@@ -161,6 +203,33 @@ class Program
                 return DefWindowProc(hWnd, msg, wParam, lParam);
         }
         return 0;
+    }
+    private static Point CalculateMousePos(IntPtr lParam)
+    {
+        int x = lParam.ToInt32() & 0xFFFF;
+        int y = (lParam.ToInt32() >> 16) & 0xFFFF;
+        return new Point(x, y);
+    }
+    static (int width, int height) GetWindowSize(IntPtr hWnd)
+    {
+        RECT rect;
+        GetClientRect(hWnd, out rect);
+        int width = rect.right - rect.left;
+        int height = rect.bottom - rect.top;
+        return (width, height);
+    }
+    private static void CreateBuffer(int width, int height)
+    {
+        if (bufferGraphics != null)
+        {
+            bufferGraphics.Dispose();
+        }
+        if (offScreenBuffer != null)
+        {
+            offScreenBuffer.Dispose();
+        }
+        offScreenBuffer = new Bitmap(width, height);
+        bufferGraphics = Graphics.FromImage(offScreenBuffer);
     }
     static void ProcessPendingMessages(MSG msg)
     {
@@ -178,50 +247,206 @@ class Program
         }
     }
     static bool dragging = false;
+    static bool mouseOnPin = false;
+    static bool mouseOnGate = false;
+    static bool mouseOnBottomOfGate = false;
     static Gate currentGate;
     static Point lastMousePos;
 
-    static void HandleButtonUp()
+    private static bool IsColliding(Point point, int width, int height)
     {
-        dragging = false;
-        currentGate = null;
+        for (int x = point.X; x < point.X + width; x += gridSize)
+        {
+            for (int y = point.Y; y < point.Y + height; y += gridSize)
+            {
+                Point gridPoint = new Point(x, y);
+                if (gridMap.ContainsKey(gridPoint))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
-    static void HandleLButtonDown(IntPtr lParam)
+    static Pin currentPin;
+    static Pin destinationPin;
+
+    static void HandleWindowResize(IntPtr hWnd)
     {
-        Point mousePos = new Point(lParam.ToInt32() & 0xFFFF, (lParam.ToInt32() >> 16) & 0xFFFF);
+        (int width, int height) = GetWindowSize(hWnd);
+
+        if (sidebar != null)
+        {
+            sidebar.UpdateSize(width, height);
+
+            InvalidateRect(hWnd, 0, true);
+        }
+    }
+    static void HandleButtonDown(IntPtr lParam, IntPtr hWnd)
+    {
+        foreach (Gate gate in gates)
+        {
+            gate.CalculateOutputs();
+            InvalidateRect(hWnd, IntPtr.Zero, true);
+        }
+
+        Point mousePos = CalculateMousePos(lParam);
+        lastMousePos = mousePos;
+
+        mouseOnPin = false;
+        mouseOnGate = false;
+        mouseOnBottomOfGate = false;
+        dragging = false;
 
         foreach (Gate gate in gates)
         {
-            Rectangle gateBounds = new Rectangle(gate.XPosition, gate.YPosition, gate.BodyWidth, gate.BodyHeight);
+            foreach (Pin pin in gate.Pins)
+            {
+                Rectangle pinBounds = new Rectangle(pin.Position.X, pin.Position.Y, Pin.PinRadius * 2, Pin.PinRadius * 2);
+                if (pinBounds.Contains(mousePos))
+                {
+                    currentPin = pin;
+                    mouseOnPin = true;
+                    return;
+                }
+            }
+        }
+
+        foreach (Gate gate in gates)
+        {
+            Rectangle gateBounds = new Rectangle(gate.Position, new Size(gate.BodyWidth, gate.BodyHeight));
+            Rectangle bottomDragBounds = new Rectangle(new Point(gate.Position.X, gate.Position.Y + gate.BodyHeight - 12), new Size(gate.BodyWidth, 12));
+            if (bottomDragBounds.Contains(mousePos))
+            {
+                mouseOnBottomOfGate = true;
+            }
             if (gateBounds.Contains(mousePos))
             {
-                dragging = true;
                 currentGate = gate;
-                lastMousePos = mousePos;
-                break;
+                mouseOnGate = true;
+                dragging = true;
+                if (gate is Switch switchGate)
+                {
+                    switchGate.ToggleSwitch();
+                    InvalidateRect(hWnd, IntPtr.Zero, true);
+                }
+                return;
+            }
+        }
+
+
+        if (sidebar.IsMouseOverButton(mousePos, out string gateType))
+        {
+            currentDraggedGate = sidebar.GetCurrentlyDraggedGate();
+            dragging = true;
+        }
+    }
+
+    static void HandleMouseMove(IntPtr lParam, IntPtr hWnd)
+    {
+        Point mousePos = CalculateMousePos(lParam);
+        Point snappedMousePos = SnapToGrid(mousePos);
+        if (dragging && currentGate != null)
+        {
+            Point offset = new Point(snappedMousePos.X - lastMousePos.X, snappedMousePos.Y - lastMousePos.Y);
+            lastMousePos = snappedMousePos;
+            InvalidateRect(hWnd, 0, true);
+            if (mouseOnPin)
+            {
+            }
+            else if (mouseOnBottomOfGate)
+            {
+
+            }
+            else if (mouseOnGate)
+            {
+                Point newPosition = new Point(currentGate.Position.X + offset.X, currentGate.Position.Y + offset.Y);
+                newPosition = SnapToGrid(newPosition);
+                currentGate.Position = newPosition;
             }
         }
     }
-    static void HandleMouseMove(IntPtr lParam, IntPtr hWnd)
+    static void HandleButtonUp(IntPtr hWnd, IntPtr lParam)
     {
-        if (dragging && currentGate != null)
+        Point mousePos = CalculateMousePos(lParam);
+        Point snappedMousePos = SnapToGrid(mousePos);
+        if (mouseOnPin)
         {
-            Point currentMousePos = new Point(lParam.ToInt32() & 0xFFFF, (lParam.ToInt32() >> 16) & 0xFFFF);
-            Point offset = new Point(currentMousePos.X - lastMousePos.X, currentMousePos.Y - lastMousePos.Y);
-            currentGate.XPosition += offset.X;
-            currentGate.YPosition += offset.Y;
-            lastMousePos = currentMousePos;
-            InvalidateRect(hWnd, IntPtr.Zero, true);
+            foreach (Gate gate in gates)
+            {
+                foreach (Pin pin in gate.Pins)
+                {
+                    Rectangle pinBounds = new Rectangle(pin.Position.X, pin.Position.Y, Pin.PinRadius * 2, Pin.PinRadius * 2);
+                    if (pinBounds.Contains(mousePos))
+                    {
+                        destinationPin = pin;
+                        Wire newWire = new Wire(currentPin.Power, currentPin, destinationPin);
+                        newWire.SourcePin = currentPin;
+                        currentPin.OutputWire = newWire;
+                        destinationPin.InputWire = newWire;
+                        newWire.DestinationPin = destinationPin;
+                        wires.Add(newWire);
+                        newWire.SourcePin.Power = newWire.Powered;
+                        destinationPin.Power = newWire.Powered;
+                        InvalidateRect(hWnd, IntPtr.Zero, true);
+                        return;
+                    }
+                }
+            }
         }
+
+        if (currentDraggedGate != null)
+        {
+            PlaceDraggedGate(hWnd, currentDraggedGate, snappedMousePos);
+            currentDraggedGate = null;
+        }
+
+        dragging = false;
+    }
+    static void PlaceDraggedGate(IntPtr hWnd, string gateType, Point gridPosition)
+    {
+        if (gridPosition.X < 100)
+        {
+            return;
+        }
+        Gate newGate = CreateGateInstance(gateType);
+        newGate.Position = gridPosition;
+        gridMap[gridPosition] = newGate;
+        gates.Add(newGate);
+        InvalidateRect(hWnd, IntPtr.Zero, true);
+    }
+    static Gate CreateGateInstance(string gateType)
+    {
+        foreach (Gate existingGate in gates)
+        {
+            if (existingGate.GateName == gateType)
+            {
+                return existingGate;
+            }
+        }
+        switch (gateType)
+        {
+            case "AND Gate":
+                return new AndGate(2, 1);
+            case "OR Gate":
+                return new OrGate(2, 1);
+            case "NOT Gate":
+                return new NotGate(1, 1);
+            case "SWITCH":
+                return new Switch(1, 1);
+            default:
+                Console.WriteLine($"Gate type: {gateType}");
+                throw new ArgumentException("Gate type Null/ Unknown gate type");
+        }
+    }
+    static Point SnapToGrid(Point point)
+    {
+        int x = (point.X / gridSize) * gridSize;
+        int y = (point.Y / gridSize) * gridSize;
+        return new Point(x, y);
     }
     static void Main(string[] args)
     {
-        //**-----------------------------------------------------
-        // ADD GATES HERE
-        //**-----------------------------------------------------
-            gates.Add(new AndGate(2, 1));
-        //**-----------------------------------------------------
-
         WNDCLASSEX wcex = new WNDCLASSEX
         {
             cbSize = (uint)Marshal.SizeOf(typeof(WNDCLASSEX)),
@@ -245,7 +470,7 @@ class Program
             WS_OVERLAPPED | WS_VISIBLE,
             100,
             100,
-            800,
+            1000,
             600,
             0,
             0,
@@ -258,6 +483,8 @@ class Program
             throw new SystemException("Failed to create window");
 
         }
+        (int windowWidth, int windowHeight) = GetWindowSize(hWnd);
+        sidebar = new Sidebar(windowWidth, windowHeight);
         MSG msg;
         while (GLOBAL_RUNNING)
         {
@@ -265,7 +492,6 @@ class Program
             TranslateMessage(ref msg);
             DispatchMessage(ref msg);
             ProcessPendingMessages(msg);
-
         }
     }
     delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
