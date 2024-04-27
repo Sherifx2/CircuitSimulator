@@ -181,11 +181,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Sheri\\OneDrive\\Desktop\\c#\\LogicSimConsole\\LogicSimConsole\\LogicSimConsole.csproj",
+      "projectUniqueName": "C:\\dev\\CircuitSimulator\\LogicSimConsole\\LogicSimConsole.csproj",
       "projectName": "LogicSimConsole",
-      "projectPath": "C:\\Users\\Sheri\\OneDrive\\Desktop\\c#\\LogicSimConsole\\LogicSimConsole\\LogicSimConsole.csproj",
+      "projectPath": "C:\\dev\\CircuitSimulator\\LogicSimConsole\\LogicSimConsole.csproj",
       "packagesPath": "C:\\Users\\Sheri\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Sheri\\OneDrive\\Desktop\\c#\\LogicSimConsole\\LogicSimConsole\\obj\\",
+      "outputPath": "C:\\dev\\CircuitSimulator\\LogicSimConsole\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

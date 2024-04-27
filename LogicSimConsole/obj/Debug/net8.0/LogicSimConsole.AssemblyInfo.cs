@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LogicSimConsole")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+95ed3ec47965c89f2063d774c473fd842ca27729")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+99d67df1f50e83491a49a20135353d12da060dc7")]
 [assembly: System.Reflection.AssemblyProductAttribute("LogicSimConsole")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LogicSimConsole")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

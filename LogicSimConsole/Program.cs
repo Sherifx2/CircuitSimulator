@@ -279,17 +279,10 @@ class Program
         {
             sidebar.UpdateSize(width, height);
 
-            InvalidateRect(hWnd, 0, true);
         }
     }
     static void HandleButtonDown(IntPtr lParam, IntPtr hWnd)
     {
-        foreach (Gate gate in gates)
-        {
-            gate.CalculateOutputs();
-            InvalidateRect(hWnd, IntPtr.Zero, true);
-        }
-
         Point mousePos = CalculateMousePos(lParam);
         lastMousePos = mousePos;
 
@@ -328,7 +321,6 @@ class Program
                 if (gate is Switch switchGate)
                 {
                     switchGate.ToggleSwitch();
-                    InvalidateRect(hWnd, IntPtr.Zero, true);
                 }
                 return;
             }
@@ -340,6 +332,7 @@ class Program
             currentDraggedGate = sidebar.GetCurrentlyDraggedGate();
             dragging = true;
         }
+
     }
 
     static void HandleMouseMove(IntPtr lParam, IntPtr hWnd)
@@ -350,7 +343,7 @@ class Program
         {
             Point offset = new Point(snappedMousePos.X - lastMousePos.X, snappedMousePos.Y - lastMousePos.Y);
             lastMousePos = snappedMousePos;
-            InvalidateRect(hWnd, 0, true);
+
             if (mouseOnPin)
             {
             }
@@ -365,6 +358,7 @@ class Program
                 currentGate.Position = newPosition;
             }
         }
+        InvalidateRect(hWnd, 0, true);
     }
     static void HandleButtonUp(IntPtr hWnd, IntPtr lParam)
     {
@@ -400,7 +394,7 @@ class Program
             PlaceDraggedGate(hWnd, currentDraggedGate, snappedMousePos);
             currentDraggedGate = null;
         }
-
+        InvalidateRect(hWnd, IntPtr.Zero, true);
         dragging = false;
     }
     static void PlaceDraggedGate(IntPtr hWnd, string gateType, Point gridPosition)
@@ -483,6 +477,7 @@ class Program
             throw new SystemException("Failed to create window");
 
         }
+
         (int windowWidth, int windowHeight) = GetWindowSize(hWnd);
         sidebar = new Sidebar(windowWidth, windowHeight);
         MSG msg;
@@ -492,6 +487,9 @@ class Program
             TranslateMessage(ref msg);
             DispatchMessage(ref msg);
             ProcessPendingMessages(msg);
+
+            InvalidateRect(hWnd, 0, true);
+
         }
     }
     delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);

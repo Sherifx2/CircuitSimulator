@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "4kH33GffY/l51aa8pu+ZAAyaMov3LrbP/RoS4DzcnF5pdwyMI5b4GPMkyqvq86kLqWR+WdQW5JIlwLYAXhKOMA==",
+  "dgSpecHash": "+/a9MPO+6o2ix5XiS8NvyvxsTFMwi1yxmEkUezU1WEHLE/FPeHP0f9tp/dPPVwSIlYYFPKD/KCtNYimp9Dcpgg==",
   "success": true,
-  "projectFilePath": "C:\\Users\\Sheri\\OneDrive\\Desktop\\c#\\LogicSimConsole\\LogicSimConsole\\LogicSimConsole.csproj",
+  "projectFilePath": "C:\\dev\\CircuitSimulator\\LogicSimConsole\\LogicSimConsole.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Sheri\\.nuget\\packages\\microsoft.win32.systemevents\\6.0.0-preview.7.21377.19\\microsoft.win32.systemevents.6.0.0-preview.7.21377.19.nupkg.sha512",
     "C:\\Users\\Sheri\\.nuget\\packages\\system.drawing.common\\6.0.0-preview.7.21377.19\\system.drawing.common.6.0.0-preview.7.21377.19.nupkg.sha512",
